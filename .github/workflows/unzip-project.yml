@@ -1,0 +1,43 @@
+name: Unzip project once
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - wizwizxui-timebot-crash-v1.zip
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for ZIP
+        id: check
+        run: |
+          if [ ! -f "wizwizxui-timebot-crash-v1.zip" ]; then
+            echo "found=false" >> $GITHUB_OUTPUT
+          else
+            echo "found=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Unzip and stage
+        if: steps.check.outputs.found == 'true'
+        run: |
+          mkdir -p tmp
+          unzip -q wizwizxui-timebot-crash-v1.zip -d tmp
+          SRC_DIR=$(find tmp -maxdepth 2 -type d -name wizwizxui-timebot-main | head -n1)
+          if [ -z "$SRC_DIR" ]; then
+            echo "wizwizxui-timebot-main not found in ZIP" >&2
+            exit 1
+          fi
+          shopt -s dotglob
+          cp -r "$SRC_DIR"/* .
+          shopt -u dotglob
+          rm -rf tmp wizwizxui-timebot-crash-v1.zip
+
+      - name: Commit changes
+        if: steps.check.outputs.found == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Unzip project: import full tree to repo root; remove ZIP"
+          branch: main
